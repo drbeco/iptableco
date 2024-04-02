@@ -8,67 +8,139 @@
 # Short-Description: Used to control iptables service with: start, stop, restart, status, save, restore or panic
 # Description:       This file is a script to load/unload iptables firewall rules located at /etc/iptables/iptables.up.rules
 #                    created by /etc/rc.d/rc.iptableco save or iptables-save > /etc/iptables/iptables.up.rules
-#                      help:     shows this help
-#                      start:    starts the firewall from standard file /etc/iptables/iptables.up.rules
-#                      stop:     stops the firewall, open all doors, IPV4 and IPV6
-#                      restart:  calls stop and start, to restart the firewall
-#                      status:   shows the rules in place for IPV4 and IPV6
-#                      save:     saves both rules from IPV4 and IPV6 to a backup file named from date+time
-#                      restore:  restores from a backup to iptables.up.rules and restart the firewall
-#                      panic:    stops all traffic in and out, keeping only loopback and the configured SSH maintainer client
+#   help    :  shows this help
+#   start   :  starts the firewall from standard file /etc/iptables/iptables.up.rules
+#   stop    :  stops the firewall, open all doors, IPV4 and IPV6
+#   restart :  calls stop and start, to restart the firewall
+#   status  :  shows the rules in place for IPV4 and IPV6
+#   save    :  saves both rules from IPV4 and IPV6 to a backup file named from date+time
+#   restore :  restores from a backup to iptables.up.rules and restart the firewall
+#   adjust  :  adds new rules using iptableco.sh output files main-up.rules and aux-up.rules
+#   panic   :  stops all traffic in and out, keeping only loopback and the configured SSH maintainer client
 ### END INIT INFO
 #
-# Author: DrBeco <rcb@beco.cc>
-# Version: 20210718.021400
- 
+# Author: Ruben Carlo Benante <rcb@beco.cc>
+# Launch: 2021-07-18
+# Version: 20240325.142836
+#
+# ##########################################################################################################################
+
 set -e
- 
+handle_error()
+{
+    echo "iptables-error : iptableco handling unknown error"
+    echo "iptables-error : iptableco handling unknown error" >> /var/log/messages
+    exit 1
+}
+trap "handle_error" ERR
+
 # Config vars
-VERSION="20230529.005341" 
-#MAINIP="192.168.11.44" # coruja
+VERSION="20240325.142836"
+MAINIP="192.168.11.44" # Add here a safe IP for panic maintainer
 PATH=/sbin:/usr/sbin:/bin:/usr/bin
-RULES=/etc/iptables/iptables.up.rules
+MAINRULES=/etc/iptables/iptables-main-up.rules
+AUXRULES=/etc/iptables/iptables-aux-up.rules
+RESTORE=0 # Restore from backup file
+ADJUST=0 # Adjust files main-up.rules and aux-up.rules
 
 # IPV4 bin
-IPT=/usr/sbin/iptables-legacy
-IPTS=/usr/sbin/iptables-legacy-save
-IPTR=/usr/sbin/iptables-legacy-restore
+IPT=/usr/sbin/iptables
+IPTS=/usr/sbin/iptables-save
+IPTR=/usr/sbin/iptables-restore
 
 # IPV6 bin
-IP6T=/usr/sbin/ip6tables-legacy
-IP6TS=/usr/sbin/ip6tables-legacy-save
-IP6TR=/usr/sbin/ip6tables-legacy-restore
+IP6T=/usr/sbin/ip6tables
+IP6TS=/usr/sbin/ip6tables-save
+IP6TR=/usr/sbin/ip6tables-restore
 
-if [ ! -f $RULES ]; then
-  echo "Unable to start iptables firewall - $RULES does not exist"
-  exit 1
-fi
-if [ ! -f $IPT ]; then
-  echo "Cannot find $IPT for IPV4" 
-  exit 1
-fi
-if [ ! -f $IP6T ]; then
-  echo "Cannot find $IP6T for IPV6" 
-  exit 1
-fi
+files_exist()
+{
+	DOCKER=0
+	if [ ! -f "$MAINRULES" ]; then
+		echo "Unable to start iptables firewall - $MAINRULES does not exist"
+		exit 1
+	fi
+	if /etc/rc.d/rc.docker status | grep -q running ; then
+		DOCKER=1
+		if [ ! -f "$AUXRULES" ]; then
+			echo "iptables-error: docker is running, need $AUXRULES file"
+			exit 1
+		fi
+	fi
+	if [ ! -f "$IPT" ]; then
+		echo "Cannot find $IPT for IPV4"
+		exit 1
+	fi
+	if [ ! -f "$IP6T" ]; then
+		echo "Cannot find $IP6T for IPV6"
+		exit 1
+	fi
+	if [ $RESTORE -eq 1 ] ; then
+		if [ ! -f "$RESTMAINFILE" ]; then
+			echo "Error: Please provide the backup file for restoring."
+			echo "Usage: ${0} restore backuprulesfile"
+			exit 1
+		fi
+	fi
+	if [ $ADJUST -eq 1 ] ; then
+        if [ $DOCKER -eq 1 ] ; then
+            if [ ! -f "$ADJMAINFILE" ] || [ ! -f "$ADJAUXFILE" ]; then
+                echo "Error: Please provide main file and aux file for adjusting"
+                echo "Usage: ${0} adjust mainrulesfile auxrulesfile"
+                exit 1
+            fi
+        else
+            if [ ! -f "$ADJMAINFILE" ]; then
+                echo "Error: Please provide main file for adjusting."
+                echo "Usage: ${0} adjust mainrulesfile"
+                exit 1
+            fi
+        fi
+	fi
+}
 
 case "$1" in
-  'restart')
+    'restart') # restart: need MAINRULES and AUXRULES
         echo "Restarting iptables firewall..."
         ${0} stop
-	sleep 1
+        sleep 1
         ${0} start
         echo "Restart done for IPV4 and IPV6."
         exit 0
         ;;
-  'start')
+    'start') # start: need MAINRULES and AUXRULES
         echo "Setting up iptables firewall..."
-        $IPTR < $RULES
-        $IP6TR < $RULES
+		files_exist
+        if [ $DOCKER -eq 1 ] ; then
+            echo "Stopping docker..."
+            /etc/rc.d/rc.docker stop
+        fi
+        echo "Applying main rules..."
+        $IPTR < $MAINRULES ; EXIT4=$?
+        $IP6TR < $MAINRULES ; EXIT6=$?
+        if [ "$EXIT4" != "0" ] && [ "$EXIT6" != "0" ] ; then
+            echo "iptables-error (main) : could not start firewall"
+            echo "iptables-error (main) : could not start firewall" >> /var/log/messages
+            exit 1
+        fi
+        if [ $DOCKER -eq 1 ] ; then
+            echo "Restarting docker..."
+            /etc/rc.d/rc.docker start
+            echo "Applying auxiliary rules..."
+			sleep 2 # just in case your docker is slow to add rules
+            $IPTR -n < $AUXRULES ; EXIT4=$?
+            # $IP6TR -n < $AUXRULES ; EXIT6=$?
+            # if [ "$EXIT4" != "0" ] && [ "$EXIT6" != "0" ] ; then
+            if [ "$EXIT4" != "0" ] ; then
+                echo "iptables-error (aux) : could not start firewall"
+                echo "iptables-error (aux) : could not start firewall" >> /var/log/messages
+                exit 1
+            fi
+        fi
         echo "Start done for IPV4 and IPV6."
         exit 0
         ;;
-  'stop')
+  'stop') # stop: needs no files
         echo "Stopping iptables firewall..."
         # IPV4 rules -----------------------------------------------------
         $IPT -P OUTPUT ACCEPT   # set ipv4 output to be accepted
@@ -85,7 +157,7 @@ case "$1" in
         echo "Stop done. All ports open for IPV4 and IPV6."
         exit 0
         ;;
-  'panic')
+  'panic') # panic: needs no files
         echo "Closing all ports except localhost and maintainer SSH..."
         # IPV4 rules -----------------------------------------------------
         $IPT -P OUTPUT DROP   # set ipv4 output to be dropped
@@ -96,9 +168,9 @@ case "$1" in
         # Don't drop INPUT/OUTPUT on localhost
         $IPT -A INPUT -i lo -j ACCEPT
         $IPT -A OUTPUT -o lo -j ACCEPT
-        # Accept SSH from Maintainer
-        #$IPT -A INPUT -p tcp -s $MAINIP --dport 22 -m state --state NEW,ESTABLISHED -j ACCEPT
-        #$IPT -A OUTPUT -p tcp -d $MAINIP --sport 22 -m state --state ESTABLISHED -j ACCEPT
+        # Accept SSH from Maintainer Notebook
+        $IPT -A INPUT -p tcp -s $MAINIP --dport 22 -m state --state NEW,ESTABLISHED -j ACCEPT
+        $IPT -A OUTPUT -p tcp -d $MAINIP --sport 22 -m state --state ESTABLISHED -j ACCEPT
         # IPV6 rules -----------------------------------------------------
         $IP6T -P OUTPUT DROP   # set ipv4 output to be dropped
         $IP6T -P INPUT DROP    # set ipv4 input to be dropped
@@ -108,13 +180,13 @@ case "$1" in
         # Don't drop INPUT/OUTPUT on localhost
         $IP6T -A INPUT -i lo -j ACCEPT
         $IP6T -A OUTPUT -o lo -j ACCEPT
-        # Accept SSH from Maintainer
-        #$IP6T -A INPUT -p tcp -s $MAINIP --dport 22 -m state --state NEW,ESTABLISHED -j ACCEPT
-        #$IP6T -A OUTPUT -p tcp -d $MAINIP --sport 22 -m state --state ESTABLISHED -j ACCEPT
+        # Accept SSH from Maintainer Notebook
+        $IP6T -A INPUT -p tcp -s $MAINIP --dport 22 -m state --state NEW,ESTABLISHED -j ACCEPT
+        $IP6T -A OUTPUT -p tcp -d $MAINIP --sport 22 -m state --state ESTABLISHED -j ACCEPT
         echo "Panic mode ON for IPV4 and IPV6."
         exit 0
         ;;
-  'status')
+  'status') # status: needs no files
         echo "Showing status for IPV4............................................................."
         $IPT -L -n -v --line-number
         echo
@@ -123,43 +195,55 @@ case "$1" in
         echo
         exit 0
         ;;
-  'restore')
-        RESTFILE=$2
-	if [ ! -f "$RESTFILE" ]; then
-                echo "Error: Please provide a prefix for restoring."
-                echo "Usage: ${0} restore filename"
-                exit 1
-        fi
-	echo "Restoring... $RESTFILE"
-	cp -i $RESTFILE $RULES #/etc/iptables/iptables.up.rules
-	${0} restart
+  'restore') # needs RESTMAINFILE, MAINRULES and AUXRULES
+	    RESTORE=1
+        RESTMAINFILE=$2
+		files_exist
+        echo "Restoring... $RESTMAINFILE"
+        cp -i $RESTMAINFILE $MAINRULES #/etc/iptables/iptables-main-up.rules
+        ${0} restart
         echo "Restore done for IPV4 and IPV6."
         exit 0
         ;;
-  'save')
+  'adjust') # needs RESTMAINFILE, RESTAUXFILE, MAINRULES and AUXRULES
+	    ADJUST=1
+        ADJMAINFILE=$2
+        ADJAUXFILE=$3
+		files_exist
+        echo "Adjusting... $ADJMAINFILE"
+        cp -i $ADJMAINFILE $MAINRULES #/etc/iptables/iptables-main-up.rules
+        if [ $DOCKER -eq 1 ] ; then
+            echo "Adjusting... $ADJAUXFILE"
+            cp -i $ADJAUXFILE $AUXRULES #/etc/iptables/iptables-aux-up.rules
+        fi
+        ${0} restart
+        echo "Adjust done for IPV4 and IPV6."
+        exit 0
+        ;;
+  'save') # Creates file BKPRULES
         echo "Saving rules for iptables firewall..."
         DDATE=$(date +"%Y%m%d%H%M%S")
-        BKPRULES="/etc/iptables/$DDATE-iptables.up.rules"
-        echo "Backup files prefix $DDATE"
+        BKPRULES="/etc/iptables/$DDATE-iptables-bkp-up.rules"
         $IPTS | head -n-2 | sed "s/^-A/-4 -A/" > $BKPRULES
         $IP6TS | tail -n+6 | sed "s/^-A/-6 -A/" >> $BKPRULES
+        echo "Backup file $BKPRULES saved"
         echo "Save done for IPV4 and IPV6."
         exit 0
         ;;
-  *) # help
+	*) # help: needs no files
         echo
         echo "Help for rc.iptableco by drbeco version $VERSION"
-	echo
+        echo
         echo "    Usage: $0  {help|start|stop|restart|status|save|restore|panic}"
-	echo
-	echo "	help:     shows this help"
-	echo "	start:    starts the firewall from standard file /etc/iptables/iptables.up.rules"
-	echo "	stop:     stops the firewall, open all doors, IPV4 and IPV6"
-	echo "	restart:  calls stop and start, to restart the firewall"
-	echo "	status:   shows the rules in place for IPV4 and IPV6"
-	echo "	save:     saves rules from IPV4 and IPV6 to a backup-file named /etc/iptables/date+time-iptables.up.rules"
-	echo "	restore:  restores from a backup-file to iptables.up.rules and restart the firewall"
-	echo "	panic:    stops all traffic in and out, keeping only loopback and the configured SSH maintainer client"
+        echo
+        echo "  help:     shows this help"
+        echo "  start:    starts the firewall from standard file /etc/iptables/iptables.up.rules"
+        echo "  stop:     stops the firewall, open all doors, IPV4 and IPV6"
+        echo "  restart:  calls stop and start, to restart the firewall"
+        echo "  status:   shows the rules in place for IPV4 and IPV6"
+        echo "  save:     saves rules from IPV4 and IPV6 to a backup-file named /etc/iptables/date-iptables-bkp-up.rules"
+        echo "  restore:  restores from a backup-file to /etc/iptables/iptables-main-up.rules and restart the firewall"
+        echo "  panic:    stops all traffic in and out, keeping only loopback and the configured SSH maintainer client"
         echo
         exit 1
         ;;
@@ -167,5 +251,6 @@ esac
 
 exit 0
 
+# vi: set ai et ts=4 sw=4 tw=0 wm=0
 # end of /etc/rc.d/rc.iptableco script by drbeco
 
