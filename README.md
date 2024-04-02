@@ -1,6 +1,5 @@
-##############################################################################
 How to use IPTABLECO
-##############################################################################
+====================
 
 ------------------------
 0. backup old rules
@@ -17,7 +16,7 @@ root# ./iptableclo.sh -s    ### save rules in a iptables compatible file
 ------------------------
 2. apply the adjustment to IPV4 and IPV6
 
-root# /etc/rc.d/rc.iptableco restore 20240325151640-iptables-main-up.rules 20240325151640-iptables-aux-up.rules
+root# /etc/rc.d/rc.iptableco adjust 20240325151640-iptables-main-up.rules 20240325151640-iptables-aux-up.rules
 
 ------------------------
 3. Check if all good. Order:
@@ -40,8 +39,14 @@ root# /etc/rc.d/rc.iptableco restore 20240325151640-iptables-main-up.rules 20240
 
 ------------------------
 
-rc.iptableco (C) 2016-present GNU-v2 License
-Author: Ruben Carlo Benante <rcb@beco.cc>
-Cretion: 2016-05-26
-Last update: 2024-03-25
+Copyright and Author
+====================
+
+
+* License: GNU/GPL v2.0
+* rc.iptableco (C) 2016-present
+* Author: Prof. Dr. Ruben Carlo Benante
+* Contact email: rcb at beco.cc
+* Cretion: 2016-05-26
+* Last update: 2024-03-25
 
