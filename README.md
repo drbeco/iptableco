@@ -4,19 +4,25 @@ How to use IPTABLECO
 ------------------------
 0. backup old rules
 
+```
 root# /etc/rc.d/rc.iptableco save
+```
 
 ------------------------
 1. generate new rules with your changes
 
+```
 root# cd ~/iptables/
 root# vi ./iptableco.sh     ### adjust new rules
 root# ./iptableclo.sh -s    ### save rules in a iptables compatible file
+```
 
 ------------------------
 2. apply the adjustment to IPV4 and IPV6
 
+```
 root# /etc/rc.d/rc.iptableco adjust 20240325151640-iptables-main-up.rules 20240325151640-iptables-aux-up.rules
+```
 
 ------------------------
 3. Check if all good. Order:
