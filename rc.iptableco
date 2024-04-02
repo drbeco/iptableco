@@ -1,0 +1,171 @@
+#! /bin/sh
+### BEGIN INIT INFO
+# Provides:          rc.iptableco
+# Required-Start:    $remote_fs $syslog
+# Required-Stop:     $remote_fs $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Used to control iptables service with: start, stop, restart, status, save, restore or panic
+# Description:       This file is a script to load/unload iptables firewall rules located at /etc/iptables/iptables.up.rules
+#                    created by /etc/rc.d/rc.iptableco save or iptables-save > /etc/iptables/iptables.up.rules
+#                      help:     shows this help
+#                      start:    starts the firewall from standard file /etc/iptables/iptables.up.rules
+#                      stop:     stops the firewall, open all doors, IPV4 and IPV6
+#                      restart:  calls stop and start, to restart the firewall
+#                      status:   shows the rules in place for IPV4 and IPV6
+#                      save:     saves both rules from IPV4 and IPV6 to a backup file named from date+time
+#                      restore:  restores from a backup to iptables.up.rules and restart the firewall
+#                      panic:    stops all traffic in and out, keeping only loopback and the configured SSH maintainer client
+### END INIT INFO
+#
+# Author: DrBeco <rcb@beco.cc>
+# Version: 20210718.021400
+ 
+set -e
+ 
+# Config vars
+VERSION="20210718.021400" 
+MAINIP="192.168.11.44" # coruja
+PATH=/sbin:/usr/sbin:/bin:/usr/bin
+RULES=/etc/iptables/iptables.up.rules
+
+# IPV4 bin
+IPT=/usr/sbin/iptables
+IPTS=/usr/sbin/iptables-save
+IPTR=/usr/sbin/iptables-restore
+
+# IPV6 bin
+IP6T=/usr/sbin/ip6tables
+IP6TS=/usr/sbin/ip6tables-save
+IP6TR=/usr/sbin/ip6tables-restore
+
+if [ ! -f $RULES ]; then
+  echo "Unable to start iptables firewall - $RULES does not exist"
+  exit 1
+fi
+if [ ! -f $IPT ]; then
+  echo "Cannot find $IPT for IPV4" 
+  exit 1
+fi
+if [ ! -f $IP6T ]; then
+  echo "Cannot find $IP6T for IPV6" 
+  exit 1
+fi
+
+case "$1" in
+  'restart')
+        echo "Restarting iptables firewall..."
+        ${0} stop
+	sleep 1
+        ${0} start
+        echo "Restart done for IPV4 and IPV6."
+        exit 0
+        ;;
+  'start')
+        echo "Setting up iptables firewall..."
+        $IPTR < $RULES
+        $IP6TR < $RULES
+        echo "Start done for IPV4 and IPV6."
+        exit 0
+        ;;
+  'stop')
+        echo "Stopping iptables firewall..."
+        # IPV4 rules -----------------------------------------------------
+        $IPT -P OUTPUT ACCEPT   # set ipv4 output to be accepted
+        $IPT -P INPUT ACCEPT    # set ipv4 input to be accepted
+        $IPT -P FORWARD ACCEPT  # set ipv4 forward to be accepted
+        $IPT -F                 # flush all chains
+        $IPT -X                 # delete user-defined chains
+        # IPV6 rules -----------------------------------------------------
+        $IP6T -P OUTPUT ACCEPT   # set ipv6 output to be accepted
+        $IP6T -P INPUT ACCEPT    # set ipv6 input to be accepted
+        $IP6T -P FORWARD ACCEPT  # set ipv6 forward to be accepted
+        $IP6T -F                 # flush all chains
+        $IP6T -X                 # delete user-defined chains
+        echo "Stop done. All ports open for IPV4 and IPV6."
+        exit 0
+        ;;
+  'panic')
+        echo "Closing all ports except localhost and maintainer SSH..."
+        # IPV4 rules -----------------------------------------------------
+        $IPT -P OUTPUT DROP   # set ipv4 output to be dropped
+        $IPT -P INPUT DROP    # set ipv4 input to be dropped
+        $IPT -P FORWARD DROP  # set ipv4 forward to be dropped
+        $IPT -F               # flush all chains
+        $IPT -X               # delete user-defined chains
+        # Don't drop INPUT/OUTPUT on localhost
+        $IPT -A INPUT -i lo -j ACCEPT
+        $IPT -A OUTPUT -o lo -j ACCEPT
+        # Accept SSH from Maintainer
+        $IPT -A INPUT -p tcp -s $MAINIP --dport 22 -m state --state NEW,ESTABLISHED -j ACCEPT
+        $IPT -A OUTPUT -p tcp -d $MAINIP --sport 22 -m state --state ESTABLISHED -j ACCEPT
+        # IPV6 rules -----------------------------------------------------
+        $IP6T -P OUTPUT DROP   # set ipv4 output to be dropped
+        $IP6T -P INPUT DROP    # set ipv4 input to be dropped
+        $IP6T -P FORWARD DROP  # set ipv4 forward to be dropped
+        $IP6T -F               # flush all chains
+        $IP6T -X               # delete user-defined chains
+        # Don't drop INPUT/OUTPUT on localhost
+        $IP6T -A INPUT -i lo -j ACCEPT
+        $IP6T -A OUTPUT -o lo -j ACCEPT
+        # Accept SSH from Maintainer
+        $IP6T -A INPUT -p tcp -s $MAINIP --dport 22 -m state --state NEW,ESTABLISHED -j ACCEPT
+        $IP6T -A OUTPUT -p tcp -d $MAINIP --sport 22 -m state --state ESTABLISHED -j ACCEPT
+        echo "Panic mode ON for IPV4 and IPV6."
+        exit 0
+        ;;
+  'status')
+        echo "Showing status for IPV4............................................................."
+        $IPT -L -n -v --line-number
+        echo
+        echo "Showing status for IPV6............................................................."
+        $IP6T -L -n -v --line-number
+        echo
+        exit 0
+        ;;
+  'restore')
+        RESTFILE=$2
+	if [ ! -f "$RESTFILE" ]; then
+                echo "Error: Please provide a prefix for restoring."
+                echo "Usage: ${0} restore filename"
+                exit 1
+        fi
+	echo "Restoring... $RESTFILE"
+	cp -i $RESTFILE $RULES #/etc/iptables/iptables.up.rules
+	${0} restart
+        echo "Restore done for IPV4 and IPV6."
+        exit 0
+        ;;
+  'save')
+        echo "Saving rules for iptables firewall..."
+        DDATE=$(date +"%Y%m%d%H%M%S")
+        BKPRULES="/etc/iptables/$DDATE-iptables.up.rules"
+        echo "Backup files prefix $DDATE"
+        $IPTS | head -n-2 | sed "s/^-A/-4 -A/" > $BKPRULES
+        $IP6TS | tail -n+6 | sed "s/^-A/-6 -A/" >> $BKPRULES
+        echo "Save done for IPV4 and IPV6."
+        exit 0
+        ;;
+  *) # help
+        echo
+        echo "Help for rc.iptableco by drbeco version $VERSION"
+	echo
+        echo "    Usage: $0  {help|start|stop|restart|status|save|restore|panic}"
+	echo
+	echo "	help:     shows this help"
+	echo "	start:    starts the firewall from standard file /etc/iptables/iptables.up.rules"
+	echo "	stop:     stops the firewall, open all doors, IPV4 and IPV6"
+	echo "	restart:  calls stop and start, to restart the firewall"
+	echo "	status:   shows the rules in place for IPV4 and IPV6"
+	echo "	save:     saves rules from IPV4 and IPV6 to a backup-file named /etc/iptables/date+time-iptables.up.rules"
+	echo "	restore:  restores from a backup-file to iptables.up.rules and restart the firewall"
+	echo "	panic:    stops all traffic in and out, keeping only loopback and the configured SSH maintainer client"
+        echo
+        exit 1
+        ;;
+esac
+
+exit 0
+
+# end of /etc/rc.d/rc.iptableco script by drbeco
+
