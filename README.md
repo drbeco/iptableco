@@ -1,32 +1,28 @@
 ##############################################################################
-manual way:
+How to use IPTABLECO
 ##############################################################################
-0. backup               $ cp iptables-2018-hydra-gera-rules.sh iptables-2020-hydra-gera-rules.sh
-1. new rules            $ ./iptables-2020-hydra-gera-rules.sh > /etc/iptables.active-2020-09-20-up.rules
-2. Copiar para /etc     $ mv /etc/iptables.up.rules /etc/iptables5.rules # numero crescente
-                        $ cp /etc/iptables.active-2020-09-20-up.rules /etc/iptables.up.rules
-3. reiniciar firewall   $/etc/init.d/iptables.sh restart
 
-##############################################################################
-automatic way
-##############################################################################
 ------------------------
 0. backup old rules
 
 root# /etc/rc.d/rc.iptableco save
+
 ------------------------
-1. gerar
+1. generate new rules with your changes
 
 root# cd ~/iptables/
-root# vi ./iptableco.sh     ### ajustar regras
+root# vi ./iptableco.sh     ### adjust new rules
 root# ./iptableclo.sh -s    ### save rules in a iptables compatible file
-------------------------
-2. aplicar, restaurar IPV4 e IPV6
 
-root# /etc/rc.d/rc.iptableco restore 20210717235731-iptables.up.rules
 ------------------------
-3. testar
-        - invalid
+2. apply the adjustment to IPV4 and IPV6
+
+root# /etc/rc.d/rc.iptableco restore 20240325151640-iptables-main-up.rules 20240325151640-iptables-aux-up.rules
+
+------------------------
+3. Check if all good. Order:
+
+        - invalid rules
         - localhost     lo
         - ping          icmp
         - ssh           22
@@ -39,5 +35,13 @@ root# /etc/rc.d/rc.iptableco restore 20210717235731-iptables.up.rules
         - gopher        70
         - rsync         873
         - dropbox       17500
+        ---------------------
+        - docker rules to append
 
+------------------------
+
+rc.iptableco (C) 2016-present GNU-v2 License
+Author: Ruben Carlo Benante <rcb@beco.cc>
+Cretion: 2016-05-26
+Last update: 2024-03-25
 
