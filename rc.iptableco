@@ -24,20 +24,20 @@
 set -e
  
 # Config vars
-VERSION="20210718.021400" 
-MAINIP="192.168.11.44" # coruja
+VERSION="20230529.005341" 
+#MAINIP="192.168.11.44" # coruja
 PATH=/sbin:/usr/sbin:/bin:/usr/bin
 RULES=/etc/iptables/iptables.up.rules
 
 # IPV4 bin
-IPT=/usr/sbin/iptables
-IPTS=/usr/sbin/iptables-save
-IPTR=/usr/sbin/iptables-restore
+IPT=/usr/sbin/iptables-legacy
+IPTS=/usr/sbin/iptables-legacy-save
+IPTR=/usr/sbin/iptables-legacy-restore
 
 # IPV6 bin
-IP6T=/usr/sbin/ip6tables
-IP6TS=/usr/sbin/ip6tables-save
-IP6TR=/usr/sbin/ip6tables-restore
+IP6T=/usr/sbin/ip6tables-legacy
+IP6TS=/usr/sbin/ip6tables-legacy-save
+IP6TR=/usr/sbin/ip6tables-legacy-restore
 
 if [ ! -f $RULES ]; then
   echo "Unable to start iptables firewall - $RULES does not exist"
@@ -97,8 +97,8 @@ case "$1" in
         $IPT -A INPUT -i lo -j ACCEPT
         $IPT -A OUTPUT -o lo -j ACCEPT
         # Accept SSH from Maintainer
-        $IPT -A INPUT -p tcp -s $MAINIP --dport 22 -m state --state NEW,ESTABLISHED -j ACCEPT
-        $IPT -A OUTPUT -p tcp -d $MAINIP --sport 22 -m state --state ESTABLISHED -j ACCEPT
+        #$IPT -A INPUT -p tcp -s $MAINIP --dport 22 -m state --state NEW,ESTABLISHED -j ACCEPT
+        #$IPT -A OUTPUT -p tcp -d $MAINIP --sport 22 -m state --state ESTABLISHED -j ACCEPT
         # IPV6 rules -----------------------------------------------------
         $IP6T -P OUTPUT DROP   # set ipv4 output to be dropped
         $IP6T -P INPUT DROP    # set ipv4 input to be dropped
@@ -109,8 +109,8 @@ case "$1" in
         $IP6T -A INPUT -i lo -j ACCEPT
         $IP6T -A OUTPUT -o lo -j ACCEPT
         # Accept SSH from Maintainer
-        $IP6T -A INPUT -p tcp -s $MAINIP --dport 22 -m state --state NEW,ESTABLISHED -j ACCEPT
-        $IP6T -A OUTPUT -p tcp -d $MAINIP --sport 22 -m state --state ESTABLISHED -j ACCEPT
+        #$IP6T -A INPUT -p tcp -s $MAINIP --dport 22 -m state --state NEW,ESTABLISHED -j ACCEPT
+        #$IP6T -A OUTPUT -p tcp -d $MAINIP --sport 22 -m state --state ESTABLISHED -j ACCEPT
         echo "Panic mode ON for IPV4 and IPV6."
         exit 0
         ;;
