@@ -1,10 +1,21 @@
 INSTALL
 =======
 
-Download the script (or clone) to `/root/iptableco`
+Download the script (or clone to `/etc/iptableco`)
 (from now on, this is the working directory implied when a directory is not explicitely cited)
 
-Copy the template to create rules for your server "myserver" with:
+If you download to a different folder `$DIFOLDER`, run:
+
+```
+$DIFOLDER/rc.iptableco install
+```
+
+to create `/etc/iptableco` and a minimum `/etc/iptableco/iptables-main-up.rules`
+
+-------------------------
+
+Change directory to `cd /etc/iptableco` (from now on, consider this the working directory for the commands bellow), and
+copy the template to create rules for your server "myserver" with:
 
 ```
 $ cp iptableco-template.sh iptableco-myserver.sh
@@ -13,10 +24,8 @@ $ cp iptableco-template.sh iptableco-myserver.sh
 To facilitate, we will create an optional link:
 
 ```
-$ ln -s /root/iptableco/iptableco-myserver.sh /root/iptableco/iptableco.sh
+$ ln -s /etc/iptableco/iptableco-myserver.sh /etc/iptableco/iptableco.sh
 ```
-
-(from now on, we will refer only to script iptableco.sh)
 
 Copy the script rc.iptableco to the rc.d folder (This is for Slackware. See your distro if this changes)
 
@@ -40,17 +49,12 @@ if [ -x /etc/rc.d/rc.iptableco ]; then
 fi
 ```
 
-Create a folder for your rules at:
-
-```
-$ mkdir /etc/iptables
-```
-
 
 FIRST RUN
 =========
 
-1. Edit iptableco.sh to your liking
+0. `$ cd /etc/iptableco`
+1. Edit `iptableco.sh` to your liking
 2. Run it to see the results
 
 ```
@@ -85,7 +89,7 @@ If needed, start any services that messes iptables up. Then you can add new rule
   $ /etc/rc.d/rc.iptableco backup
 ```
 
-This will create a backup file located at /etc/iptables. If needed, use restore:
+This will create a backup file located at /etc/iptableco. If needed, use restore:
 
 ```
   $ /etc/rc.d/rc.iptableco restore $thedate-iptables-bkp-up.rules
@@ -106,7 +110,7 @@ root# /etc/rc.d/rc.iptableco backup
 1. generate new rules with your changes
 
 ```
-root# cd ~/iptables/
+root# cd /etc/iptableco/
 root# vi ./iptableco.sh     ### add new rules
 root# ./iptableclo.sh -s    ### save rules in a iptables compatible file
 ```
