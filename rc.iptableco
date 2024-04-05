@@ -9,19 +9,20 @@
 # Description:       This file is a script to load/unload iptables firewall rules located at /etc/iptables/iptables.up.rules
 #                    created by /etc/rc.d/rc.iptableco save or iptables-save > /etc/iptables/iptables.up.rules
 #   help    :  shows this help
-#   start   :  starts the firewall from standard file /etc/iptables/iptables.up.rules
+#   start   :  starts the firewall from standard file /etc/iptables/iptables-main-up.rules
 #   stop    :  stops the firewall, open all doors, IPV4 and IPV6
 #   restart :  calls stop and start, to restart the firewall
 #   status  :  shows the rules in place for IPV4 and IPV6
-#   save    :  saves both rules from IPV4 and IPV6 to a backup file named from date+time
-#   restore :  restores from a backup to iptables.up.rules and restart the firewall
-#   adjust  :  adds new rules using iptableco.sh output files main-up.rules and aux-up.rules
+#   backup  :  saves both rules from IPV4 and IPV6 to a backup file named from /etc/iptables/date-iptables-bkp-up.rules
+#   restore :  restores from a backup-file to iptables-main-up.rules and restarts the firewall
+#   add     :  add rules without stopping the firewall (only for IPv4 currently
 #   panic   :  stops all traffic in and out, keeping only loopback and the configured SSH maintainer client
+#
 ### END INIT INFO
 #
 # Author: Ruben Carlo Benante <rcb@beco.cc>
 # Launch: 2016-05-26
-# Version: 20240325.142836
+# VERSION="20240404.005802"
 #
 # ##########################################################################################################################
 
@@ -49,7 +50,6 @@ VERSION="20240404.005802"
 MAINIP="192.168.11.44" # Add here a safe IP for panic maintainer
 PATH=/sbin:/usr/sbin:/bin:/usr/bin
 MAINRULES=/etc/iptables/iptables-main-up.rules
-# AUXRULES=/etc/iptables/iptables-aux-up.rules
 RESTORE=0 # Restore from backup file
 INSERT=0 # Insert rules without reseting the firewall
 
@@ -159,9 +159,6 @@ case "$1" in
         # Don't drop INPUT/OUTPUT on localhost
         $IP6T -6 -A INPUT -i lo -j ACCEPT
         $IP6T -6 -A OUTPUT -o lo -j ACCEPT
-        # Accept SSH from Maintainer Notebook
-        $IP6T -6 -A INPUT -p tcp -s $MAINIP --dport 22 -m state --state NEW,ESTABLISHED -j ACCEPT
-        $IP6T -6 -A OUTPUT -p tcp -d $MAINIP --sport 22 -m state --state ESTABLISHED -j ACCEPT
         echo "Panic mode ON for IPV4 and IPV6."
         exit 0
         ;;
@@ -184,7 +181,7 @@ case "$1" in
         # join filter IPv4 and IPv6 (CAUTION: honors only IPv4 policy)
         $IPTS -t filter | grep -Ev "COMMIT" | sed "s/^-A /-4 -A /" >> $BKPRULES
         $IP6TS -t filter | grep -Ev "(^\*filter|^:[A-Z]+ )" | sed "s/^-A /-6 -A /" >> $BKPRULES
-        #TODO: save also tables: security, raw, mangle
+        #TODO: save also tables: security, raw, mangle (if needed)
         echo "Backup file $BKPRULES saved"
         echo "Save done for IPV4 and IPV6."
         exit 0
