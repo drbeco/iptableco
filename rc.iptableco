@@ -22,7 +22,7 @@
 #
 # Author: Ruben Carlo Benante <rcb@beco.cc>
 # Launch: 2016-05-26
-# VERSION="20240404.005802"
+# VERSION="20240406.094428"
 #
 # ##########################################################################################################################
 
@@ -46,7 +46,7 @@ trap "handle_error" ERR
 ###########################################################################
 # Global config vars
 #
-VERSION="20240404.005802"
+VERSION="20240406.094428"
 DDATE=$(date +"%Y%m%d%H%M%S")
 MAINIP="192.168.11.44" # Add here a safe IP for panic maintainer
 PATH=/sbin:/usr/sbin:/bin:/usr/bin
@@ -121,6 +121,15 @@ files_exist()
 # ##########################################################################################################################
 # main script start:
 #
+if [ $# -eq 0 ] ; then
+    echo "Error: Please provide a valid command:"
+    echo "       [start|stop|restart|status|save|restore|add|panic|install|help]"
+    echo "For more info, try:"
+    echo "       ${0} help"
+    echo
+    exit 1
+fi
+
 case "$1" in
     'restart') # restart: need MAINRULES
         echo "Restarting iptables firewall..."
