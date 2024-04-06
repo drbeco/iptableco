@@ -42,7 +42,7 @@ $ chmod +x /etc/rc.d/rc.iptableco
 Add a call in your /etc/rc.d/rc.local (Again, Slackware. Check your distro on how to start services on boot). Edit the file and add:
 
 ```
-# Enabling rc.iptableco firewall script by drbeco version 20240404.005802
+# Enabling rc.iptableco firewall script by drbeco version 20240406.094428
 if [ -x /etc/rc.d/rc.iptableco ]; then
     echo "Enabling rc.iptableco firewall"
     /etc/rc.d/rc.iptableco start

@@ -1,7 +1,7 @@
 #!/bin/bash
 # By DrBeco 2016-05-26, 2021-07-17, 2024-03-24, 2024-04-03
 
-VERSION="20240404.005802"
+VERSION="20240406.094428"
 DDATE=$(date +"%Y%m%d%H%M%S")
 SAVE=0
 if [ "$1" == "-s" ]; then
