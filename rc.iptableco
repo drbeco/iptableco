@@ -5,33 +5,37 @@
 # Required-Stop:     $remote_fs $syslog
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
-# Short-Description: Used to control iptables service. Commands: start, stop, restart, status, save, restore, add, panic, install and help
-# Description:       This file is a script to load/unload iptables firewall rules located at /etc/iptableco/iptables-main-up.rules
-#                    created by /etc/rc.d/rc.iptableco save or iptables-save > /etc/iptableco/iptables-main-up.rules
-#   help    :  shows this help
-#   start   :  starts the firewall from standard file /etc/iptableco/iptables-main-up.rules
-#   stop    :  stops the firewall, open all doors, IPV4 and IPV6
-#   restart :  calls stop and start, to restart the firewall
-#   status  :  shows the rules in place for IPV4 and IPV6
-#   save    :  saves both rules from IPV4 and IPV6 to a backup-file named from /etc/iptableco/date-iptables-bkp-up.rules
-#   restore :  restores from a backup-file to iptables-main-up.rules and restarts the firewall
-#   add     :  add rules without stopping the firewall (only for IPv4 currently
-#   panic   :  stops all traffic in and out, keeping only loopback and the configured SSH maintainer client
+# Short-Description: iptables management toolkit (v2 -- chain-based architecture)
+# Description:       Manages iptables rules organized in user-defined chains
+#                    (IPTABLECO-INPUT, IPTABLECO-OUTPUT). The rules file at
+#                    /etc/iptableco/iptables.rules is the source of truth.
+#                    Per-host config (variables) at /etc/iptableco/iptables.env.
+#
+#   help     : shows this help
+#   start    : applies our rules (idempotent; preserves fail2ban and Docker chains)
+#   stop     : removes only our rules and policies; fail2ban and Docker keep working
+#   restart  : stop + start
+#   restore  : apply a specific backup file to the kernel
+#   save     : snapshot full kernel state to /etc/iptableco/<timestamp>-bkp-*.rules
+#   status   : show our chains with rule counters
+#   panic    : drop all traffic except loopback + maintainer SSH
+#   flush    : full nuke -- ACCEPT all, delete all user chains (fail2ban and Docker too)
 #
 ### END INIT INFO
 #
-# Author: Ruben Carlo Benante <rcb@beco.cc>
-# Launch: 2016-05-26
-# VERSION="20240406.094428"
+# Author:  Ruben Carlo Benante <rcb@beco.cc>
+# Launch:  2016-05-26
+# v2:      2026-06-03 -- chain-based architecture
+# VERSION="20260603.000000"
 #
-# ##########################################################################################################################
+# #########################################################################
 
 # Bash options:
 #    set -e : exit shell on errors
 #    set -u : treat undefined variables as errors
 set -eu
 
-# ##########################################################################################################################
+# #########################################################################
 # Handle error function
 #
 handle_error()
@@ -43,7 +47,7 @@ handle_error()
 trap "handle_error" ERR
 
 
-###########################################################################
+# #########################################################################
 # Global config vars
 #
 VERSION="20240406.094428"
@@ -64,7 +68,7 @@ IP6T=/usr/sbin/ip6tables
 IP6TS=/usr/sbin/ip6tables-save
 IP6TR=/usr/sbin/ip6tables-restore
 
-# ##########################################################################################################################
+# #########################################################################
 # creates a minimal /etc/iptableco/iptables-main-up.rules
 #
 iptableco_install()
@@ -83,7 +87,7 @@ EOF
     # fi
 }
 
-# ##########################################################################################################################
+# #########################################################################
 # test given arguments are existing files
 #
 files_exist()
@@ -118,7 +122,7 @@ files_exist()
     fi
 }
 
-# ##########################################################################################################################
+# #########################################################################
 # main script start:
 #
 if [ $# -eq 0 ] ; then
