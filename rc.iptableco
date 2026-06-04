@@ -306,13 +306,18 @@ case "$comm" in
         echo "Panic mode ON for IPV4 and IPV6."
         exit 0
         ;;
-    'status') # status: needs no files
-        echo "Showing status for IPV4............................................................."
-        $IPT -L -n -v --line-number
-        echo
-        echo "Showing status for IPV6............................................................."
-        $IP6T -L -n -v --line-number
-        echo
+    'flush') # flush: full nuke -- ACCEPT all + delete all user chains (ours and others)
+        echo "Flushing all iptables rules and user chains..."
+        # IPV4 rules -----------------------------------------------------
+        # Set every built-in chain policy to ACCEPT, drop all rules
+        $IPTS | awk '/^[*]/ { print $1 } /^:[ADEFGINOPRSTUW]+ [^-]/ { print $1 " ACCEPT" ; } /COMMIT/ { print $0; }' | $IPTR
+        $IPT -X                 # delete user-defined chains (ours + any others)
+        $IPT -Z                 # reset packet counters
+        # IPV6 rules -----------------------------------------------------
+        $IP6TS | awk '/^[*]/ { print $1 } /^:[ADEFGINOPRSTUW]+ [^-]/ { print $1 " ACCEPT" ; } /COMMIT/ { print $0; }' | $IP6TR
+        $IP6T -X                # delete user-defined chains
+        $IP6T -Z                # reset packet counters
+        echo "Flush done. All ports open for IPV4 and IPV6. User chains from other tools will need to be recreated."
         exit 0
         ;;
     'save') # Creates file BKPRULES
