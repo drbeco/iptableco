@@ -258,37 +258,31 @@ case "$comm" in
         echo "Restart done for IPV4 and IPV6."
         exit 0
         ;;
-    'start') # start: need MAINRULES
-        #TODO: if no /etc/iptableco dir, create and start a bare minimum set of rules
-        echo "Setting up iptables firewall..."
-        files_exist
-        echo "Applying main rules..."
-        $IPTR < $MAINRULES ; EXIT4=$?
-        $IP6TR < $MAINRULES ; EXIT6=$?
-        if [ "$EXIT4" != "0" ] && [ "$EXIT6" != "0" ] ; then
-            echo "iptables-error (main) : could not start firewall"
-            echo "iptables-error (main) : could not start firewall" >> /var/log/messages
-            exit 1
+    'status') # status: show our chains; --force shows full state too
+        if [ "$force" = "yes" ] ; then
+            echo "Full iptables state for IPV4......................................................."
+            $IPT  -L -n -v --line-number
+            $IPT  -t nat -L -n -v --line-number
+            echo
+            echo "Full iptables state for IPV6......................................................."
+            $IP6T -L -n -v --line-number
+        else
+            echo "IPTABLECO chains for IPV4........................................................."
+            for c in INPUT OUTPUT ; do
+                $IPT  -L IPTABLECO-$c -n -v --line-number 2>/dev/null || echo "  (IPTABLECO-$c not present)"
+            done
+            $IPT  -t nat -L IPTABLECO-POSTROUTING -n -v --line-number 2>/dev/null || echo "  (IPTABLECO-POSTROUTING not present)"
+            echo
+            echo "IPTABLECO chains for IPV6........................................................."
+            for c in INPUT OUTPUT ; do
+                $IP6T -L IPTABLECO-$c -n -v --line-number 2>/dev/null || echo "  (IPTABLECO-$c not present)"
+            done
         fi
-        echo "Start done for IPV4 and IPV6."
+        echo
         exit 0
         ;;
-    'stop') # stop: needs no files
-        echo "Stopping iptables firewall..."
-        # IPV4 rules -----------------------------------------------------
-        # Clear only tables that do exist, set policy to ACCEPT
-        $IPTS | awk '/^[*]/ { print $1 } /^:[ADEFGINOPRSTUW]+ [^-]/ { print $1 " ACCEPT" ; } /COMMIT/ { print $0; }' | $IPTR
-        $IPT -X                 # delete user-defined chains
-        $IPT -Z                 # reset package counters
-        # IPV6 rules -----------------------------------------------------
-        # Clear only tables that do exist, set policy to ACCEPT
-        $IP6TS | awk '/^[*]/ { print $1 } /^:[ADEFGINOPRSTUW]+ [^-]/ { print $1 " ACCEPT" ; } /COMMIT/ { print $0; }' | $IP6TR
-        $IP6T -X                # delete user-defined chains
-        $IP6T -Z                # reset package counters
-        echo "Stop done. All ports open for IPV4 and IPV6."
-        exit 0
-        ;;
-    'panic') # panic: needs no files
+    'panic') # panic: lock down + accept loopback + maintainer SSH only
+        set -a ; . $ENVFILE ; set +a # read config variables to environment ($MAINIP)
         echo "Closing all ports except localhost and maintainer SSH..."
         # IPV4 rules -----------------------------------------------------
         # Clear only tables that do exist, set policy to DROP
