@@ -5,7 +5,7 @@
 # Required-Stop:     $remote_fs $syslog
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
-# Short-Description: iptables management toolkit (v2 -- chain-based architecture)
+# Short-Description: iptables management toolkit (v3 -- chain-based architecture)
 # Description:       Manages iptables rules organized in user-defined chains
 #                    (IPTABLECO-INPUT, IPTABLECO-OUTPUT). The rules file at
 #                    /etc/iptableco/iptables.rules is the source of truth.
@@ -25,8 +25,8 @@
 #
 # Author:  Ruben Carlo Benante <rcb@beco.cc>
 # Launch:  2016-05-26
-# v2:      2026-06-03 -- chain-based architecture
-# VERSION="20260603.000000"
+# v3:      2026-06-03 -- chain-based architecture
+# VERSION="3.0.20260603"
 #
 # #########################################################################
 
@@ -50,13 +50,12 @@ trap "handle_error" ERR
 # #########################################################################
 # Global config vars
 #
-VERSION="20240406.094428"
+VERSION="3.0.20260603"
 DDATE=$(date +"%Y%m%d%H%M%S")
-MAINIP="192.168.11.44" # Add here a safe IP for panic maintainer
 PATH=/sbin:/usr/sbin:/bin:/usr/bin
-MAINRULES=/etc/iptableco/iptables-main-up.rules
-RESTORE=0 # Restore from backup file
-INSERT=0 # Insert rules without reseting the firewall
+ENVFILE=/etc/iptableco/iptables.env
+MAINRULES=/etc/iptableco/iptables.rules
+BACKUPDIR=/etc/iptableco/
 
 # IPV4 bin
 IPT=/usr/sbin/iptables
