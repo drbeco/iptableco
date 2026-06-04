@@ -320,27 +320,25 @@ case "$comm" in
         echo "Flush done. All ports open for IPV4 and IPV6. User chains from other tools will need to be recreated."
         exit 0
         ;;
-    'save') # Creates file BKPRULES
-        echo "Saving rules for iptables firewall..."
-        BKPRULES="/etc/iptableco/$DDATE-iptables-bkp-up.rules"
-        # join nat IPv4 and IPv6 (CAUTION: honors only IPv4 policy)
-        $IPTS -t nat | grep -Ev "COMMIT" | sed "s/^-A /-4 -A /" > $BKPRULES
-        $IP6TS -t nat | grep -Ev "(^\*nat|^:[A-Z]+ )" | sed "s/^-A /-6 -A /" >> $BKPRULES
-        # join filter IPv4 and IPv6 (CAUTION: honors only IPv4 policy)
-        $IPTS -t filter | grep -Ev "COMMIT" | sed "s/^-A /-4 -A /" >> $BKPRULES
-        $IP6TS -t filter | grep -Ev "(^\*filter|^:[A-Z]+ )" | sed "s/^-A /-6 -A /" >> $BKPRULES
-        #TODO: save also tables: security, raw, mangle (if needed)
-        echo "Backup file $BKPRULES saved"
-        echo "Save done for IPV4 and IPV6."
+    'backup') # backup: snapshot kernel state into a single unified .rules file
+        BKPRULES="${BACKUPDIR}${DDATE}-iptables-bkp.rules"
+        echo "Backing up rules to $BKPRULES..."
+        : > $BKPRULES   # truncate (or create if missing)
+        # Per table: iptables-save first (full -- headers + chains + rules),
+        # then ip6tables-save (rules only; headers/chains come from v4 dump).
+        # Every -A line is tagged -4 or -6 for family identification.
+        for t in nat filter ; do
+            $IPTS  -t $t | grep -Ev "^COMMIT$"         | sed "s/^-A /-4 -A /" >> $BKPRULES
+            $IP6TS -t $t | grep -Ev "^(\*$t|:[^ ]+ )"  | sed "s/^-A /-6 -A /" >> $BKPRULES
+        done
+        # NOTE: raw, mangle, security tables not included; extend the loop if needed.
+        echo "Backup done: $BKPRULES"
         exit 0
         ;;
-    'restore') # needs RESTMAINFILE, MAINRULES
-        #TODO: if [ ! -f $RESTMAINFILE ] : restore the most recent backup by date
-        RESTORE=1
-        RESTMAINFILE=$2
-        files_exist
-        echo "Restoring... $RESTMAINFILE"
-        cp -i $RESTMAINFILE $MAINRULES #/etc/iptableco/iptables-main-up.rules
+    'restore') # needs BKPRULES, MAINRULES
+        #TODO: if [ ! -f $BKPRULES ] : restore the most recent backup by date
+        echo "Restoring... $BKPRULES"
+        cp -i $BKPRULES $MAINRULES # /etc/iptableco/iptables.rules
         ${0} restart
         echo "Restore done for IPV4 and IPV6."
         exit 0
