@@ -12,14 +12,15 @@
 #                    Per-host config (variables) at /etc/iptableco/iptables.env.
 #
 #   help     : shows this help
-#   start    : applies our rules (idempotent; preserves fail2ban and Docker chains)
-#   stop     : removes only our rules and policies; fail2ban and Docker keep working
+#   start    : applies our rules (idempotent; preserves other user chains)
+#   stop     : removes only our rules and policies; other user chains preserved
 #   restart  : stop + start
-#   restore  : apply a specific backup file to the kernel
-#   save     : snapshot full kernel state to /etc/iptableco/<timestamp>-bkp-*.rules
-#   status   : show our chains with rule counters
+#   status   : show our chains with rule counters (--force shows full state)
 #   panic    : drop all traffic except loopback + maintainer SSH
-#   flush    : full nuke -- ACCEPT all, delete all user chains (fail2ban and Docker too)
+#   flush    : full nuke -- ACCEPT all, delete all user chains (ours and others)
+#   install  : fresh install, creates /etc/iptableco/ + skeleton iptables.rules + iptables.env (--force overwrites)
+#   backup   : snapshot kernel state to /etc/iptableco/<timestamp>-iptables-bkp.rules
+#   restore  : apply a specific backup file to the kernel
 #
 ### END INIT INFO
 #
@@ -293,18 +294,18 @@ case "$1" in
         echo
         echo "Help for rc.iptableco by drbeco version $VERSION"
         echo
-        echo "  Usage: $0  {help|start|stop|restart|status|save|restore|add|panic|install}"
+        echo "  Usage: $0  {help|start|stop|restart|status|panic|flush|install|backup|restore <file>} [--force]"
         echo
-        echo "  help    : shows this help"
-        echo "  start   : starts the firewall from standard file /etc/iptableco/iptables-main-up.rules"
-        echo "  stop    : stops the firewall, open all doors, IPV4 and IPV6"
-        echo "  restart : calls stop and start, to restart the firewall"
-        echo "  status  : shows the rules in place for IPV4 and IPV6"
-        echo "  save    : saves rules from IPV4 and IPV6 to a backup-file named /etc/iptableco/date-iptables-bkp-up.rules"
-        echo "  restore : restores from a backup-file to /etc/iptableco/iptables-main-up.rules and restart the firewall"
-        echo "  add     : add rules without stopping the firewall (only for IPv4 currently)"
-        echo "  panic   : stops all traffic in and out, keeping only loopback and the configured SSH maintainer client"
-        echo "  install : fresh install, creates /etc/iptableco and a minimal iptables-main-up.rules. Careful: backup your rules."
+        echo "  help     : shows this help"
+        echo "  start    : applies our rules (idempotent; preserves other user chains)"
+        echo "  stop     : removes only our rules and policies; other user chains preserved"
+        echo "  restart  : stop + start"
+        echo "  status   : show our chains with rule counters (--force shows full state)"
+        echo "  panic    : drop all traffic except loopback + maintainer SSH"
+        echo "  flush    : full nuke -- ACCEPT all, delete all user chains (ours and others)"
+        echo "  install  : fresh install, creates /etc/iptableco/ + skeleton iptables.rules + iptables.env (--force overwrites existing)"
+        echo "  backup   : snapshot kernel state to /etc/iptableco/<timestamp>-iptables-bkp.rules"
+        echo "  restore  : apply a specific backup file to the kernel"
         echo
         exit 1
         ;;
