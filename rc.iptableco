@@ -166,7 +166,8 @@ files_exist()
 #
 if [ $# -eq 0 ] ; then
     echo "Error: Please provide a valid command:"
-    echo "       [start|stop|restart|status|save|restore|add|panic|install|help]"
+    echo "       [help|start|stop|restart|status [--force]|panic|flush|install [--force]|backup|restore <file>]"
+    echo
     echo "For more info, try:"
     echo "       ${0} help"
     echo
