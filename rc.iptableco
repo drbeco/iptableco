@@ -159,21 +159,6 @@ files_exist()
         echo "Cannot find $IP6T for IPV6"
         exit 1
     fi
-    if [ $RESTORE -eq 1 ] ; then
-        if [ ! -f "$RESTMAINFILE" ]; then
-            echo "Error: Please provide the backup-file for restoring."
-            echo "Usage: ${0} restore date-iptables-bkp-up.rules"
-            # TODO: use the most recent in case no file is given
-            exit 1
-        fi
-    fi
-    if [ $INSERT -eq 1 ] ; then
-        if [ ! -f "$INSERTFILE" ] ; then
-            echo "Error: Please provide the file of rules to insert."
-            echo "Usage: ${0} add date-iptables-add-up.rules"
-            exit 1
-        fi
-    fi
 }
 
 # #########################################################################
