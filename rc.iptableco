@@ -213,8 +213,44 @@ if [ "$comm" = "err" ] ; then
     exit 1
 fi
 
-case "$1" in
-    'restart') # restart: need MAINRULES
+# check if ready for all cases except install/help
+case "$comm" in
+    install|help) : ;;
+    *) files_exist "$BKPRULES" ;;
+esac
+
+case "$comm" in
+    'start') # start: need MAINRULES + ENVFILE
+        echo "Setting up iptables firewall..."
+        set -a ; . $ENVFILE ; set +a # read config variables to environment
+        echo "Applying main rules..."
+        envsubst < $MAINRULES | $IPTR  -n
+        envsubst < $MAINRULES | $IP6TR -n
+        echo "Start done for IPV4 and IPV6."
+        exit 0
+        ;;
+    'stop') # stop: needs no files; removes only our own footprint
+        echo "Stopping iptableco rules..."
+        # Reset policies + remove our user chains (IPv4 and IPv6)
+        for c in INPUT OUTPUT FORWARD POSTROUTING ; do
+            if [ "$c" = "POSTROUTING" ] ; then
+                t="-t nat"
+            else
+                t=""
+                $IPT  -P $c ACCEPT                               # reset built-in policy IPv4
+                $IP6T -P $c ACCEPT                               # reset built-in policy IPv6
+            fi
+            $IPT  $t -D $c -j IPTABLECO-$c 2>/dev/null || true   # remove jump  IPv4
+            $IPT  $t -F IPTABLECO-$c       2>/dev/null || true   # flush rules  IPv4
+            $IPT  $t -X IPTABLECO-$c       2>/dev/null || true   # delete chain IPv4
+            $IP6T $t -D $c -j IPTABLECO-$c 2>/dev/null || true   # remove jump  IPv6
+            $IP6T $t -F IPTABLECO-$c       2>/dev/null || true   # flush rules  IPv6
+            $IP6T $t -X IPTABLECO-$c       2>/dev/null || true   # delete chain IPv6
+        done
+        echo "Stop done. iptableco footprint removed; other user chains preserved."
+        exit 0
+        ;;
+    'restart') # restart: need MAINRULES + ENVFILE
         echo "Restarting iptables firewall..."
         ${0} stop
         sleep 1
