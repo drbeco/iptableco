@@ -123,19 +123,31 @@ PRINTER=""
 PING="echo-request"
 PONG="echo-reply"
 EOF
-        echo "Created skeleton $ENVFILE -- EDIT before running 'start'"
+        echo "Created (or overwrote) $ENVFILE -- EDIT before running 'start'"
     else
-        echo "$ENVFILE already exists -- not overwritten"
+        echo "$ENVFILE already exists -- not overwritten (use --force)"
     fi
 }
 
 # #########################################################################
-# test given arguments are existing files
+# test required files exist (optional test also backup)
 #
 files_exist()
 {
+    if [ "y${1:-}" != "y" ] ; then
+        if [ ! -f "$1" ]; then
+            echo "File $1 does not exist"
+            echo "If it is a restore, try first /etc/rc.d/rc.iptableco backup"
+            exit 1
+        fi
+    fi
     if [ ! -f "$MAINRULES" ]; then
         echo "Unable to start iptables firewall - $MAINRULES does not exist"
+        echo "Try first /etc/rc.d/rc.iptableco install"
+        exit 1
+    fi
+    if [ ! -f "$ENVFILE" ]; then
+        echo "Unable to start iptables firewall - $ENVFILE does not exist"
         echo "Try first /etc/rc.d/rc.iptableco install"
         exit 1
     fi
