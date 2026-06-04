@@ -164,7 +164,46 @@ files_exist()
 # #########################################################################
 # main script start:
 #
-if [ $# -eq 0 ] ; then
+commands=" help start stop restart status panic flush install backup restore "
+comm="err"
+force="no"
+arg=""           # raw 2nd positional arg (--force or backup filename)
+BKPRULES=""      # backup file path (set by validation if restore)
+if [ $# -eq 1 ] ; then
+    case "$commands" in
+        *" $1 "*)
+            comm="$1"
+            ;;
+    esac
+fi
+if [ $# -eq 2 ] ; then
+    case "$commands" in
+        *" $1 "*)
+            comm="$1"
+            arg="$2"
+            ;;
+        *" $2 "*)
+            comm="$2"
+            arg="$1"
+            ;;
+    esac
+fi
+if [ "y$arg" = "y--force" ] ; then
+    force="yes"
+    arg=""
+fi
+if [ "$comm" = "restore" ] ; then
+    if [ -z "$arg" ] ; then
+        echo "usage: restore <backup-file>"
+        exit 1
+    fi
+    BKPRULES="$arg"
+    arg=""
+elif [ -n "$arg" ] ; then
+    comm="err"
+    arg=""
+fi
+if [ "$comm" = "err" ] ; then
     echo "Error: Please provide a valid command:"
     echo "       [help|start|stop|restart|status [--force]|panic|flush|install [--force]|backup|restore <file>]"
     echo
