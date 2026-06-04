@@ -343,21 +343,9 @@ case "$comm" in
         echo "Restore done for IPV4 and IPV6."
         exit 0
         ;;
-    'add') # Insert rules without stopping the firewall (useful for docker rules)
-        #TODO: add also IPv6 rules
-        INSERT=1
-        INSERTFILE=$2
-        files_exist
-        echo "Inserting new rules to current set $2"
-        while read LIN ; do
-            $IPT $LIN
-        done < "$INSERTFILE"
-        echo "Insert done for IPV4 and IPV6."
-        exit 0
-        ;;
-    'install') # Insert rules without stopping the firewall (useful for docker rules)
-        echo "Installing a minimal iptables set of rules at /etc/iptableco"
-        iptableco_install
+    'install') # install: bootstrap /etc/iptableco/ (idempotent unless --force)
+        echo "Installing iptableco at /etc/iptableco/ ..."
+        iptableco_install "$force"
         echo "Installation done. Use /etc/rc.d/rc.iptableco start to activate the firewall"
         exit 0
         ;;
