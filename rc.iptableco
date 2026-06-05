@@ -27,7 +27,8 @@
 # Author:  Ruben Carlo Benante <rcb@beco.cc>
 # Launch:  2016-05-26
 # v3:      2026-06-03 -- chain-based architecture
-# VERSION="3.0.20260603"
+# v3.1:    2026-06-04 -- status shows FORWARD + v6 nat
+# VERSION="3.1.20260604"
 #
 # #########################################################################
 
@@ -51,7 +52,7 @@ trap "handle_error" ERR
 # #########################################################################
 # Global config vars
 #
-VERSION="3.0.20260603"
+VERSION="3.1.20260604"
 DDATE=$(date +"%Y%m%d%H%M%S")
 PATH=/sbin:/usr/sbin:/bin:/usr/bin
 ENVFILE=/etc/iptableco/iptables.env
