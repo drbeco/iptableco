@@ -268,15 +268,16 @@ case "$comm" in
             $IP6T -L -n -v --line-number
         else
             echo "IPTABLECO chains for IPV4........................................................."
-            for c in INPUT OUTPUT ; do
+            for c in INPUT OUTPUT FORWARD ; do
                 $IPT  -L IPTABLECO-$c -n -v --line-number 2>/dev/null || echo "  (IPTABLECO-$c not present)"
             done
             $IPT  -t nat -L IPTABLECO-POSTROUTING -n -v --line-number 2>/dev/null || echo "  (IPTABLECO-POSTROUTING not present)"
             echo
             echo "IPTABLECO chains for IPV6........................................................."
-            for c in INPUT OUTPUT ; do
+            for c in INPUT OUTPUT FORWARD ; do
                 $IP6T -L IPTABLECO-$c -n -v --line-number 2>/dev/null || echo "  (IPTABLECO-$c not present)"
             done
+            $IP6T -t nat -L IPTABLECO-POSTROUTING -n -v --line-number 2>/dev/null || echo "  (IPTABLECO-POSTROUTING not present)"
         fi
         echo
         exit 0
